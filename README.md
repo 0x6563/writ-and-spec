@@ -1,0 +1,3 @@
+# Writ&Spec
+
+Writ&Spec is an English-like domain-specific language for writing browser automation and end-to-end tests that the people closest to the product can read. QA analysts, product owners and stakeholders can review a script and confirm it describes the right behavior without knowing how to program. Statements read as direct instructions, like `type "hello" in $(.search)` or `verify "logged in" by $(.dashboard) is visible`. Complex logic stays in developer-owned functions and JavaScript that scripts import and call by name, so test steps stay simple. That split also makes AI-assisted authoring practical: AI can write a script, and a person can check it.

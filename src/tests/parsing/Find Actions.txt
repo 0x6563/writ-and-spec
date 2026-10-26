@@ -1,0 +1,3 @@
+modal = find $(.modal)
+items = find every $(.item)
+link = find $(a) in $(.nav)

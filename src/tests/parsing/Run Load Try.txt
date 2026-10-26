@@ -1,0 +1,7 @@
+run login(vars.username, vars.password)
+run in browser js {return 1}
+context = load init()
+context = load globally setup()
+try {
+    click $(.might-not-exist)
+}

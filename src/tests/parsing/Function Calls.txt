@@ -1,0 +1,3 @@
+a = login()
+b = login(vars.username, vars.password)
+dev exit(1)

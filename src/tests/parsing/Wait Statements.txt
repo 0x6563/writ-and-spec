@@ -1,0 +1,3 @@
+wait 30s
+wait until $(.result) is visible
+wait until next tab opened

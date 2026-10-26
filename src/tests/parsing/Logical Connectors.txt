@@ -1,0 +1,9 @@
+a = any {
+    $(.error) is visible,
+    $(.warning) is visible
+}
+
+b = all {
+    $(.dashboard) is visible,
+    $(.avatar) is visible
+}

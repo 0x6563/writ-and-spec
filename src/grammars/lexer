@@ -1,0 +1,298 @@
+lexer {
+
+	[start]
+		- import reserved
+		- import comment_multline
+		- import comment_inline
+		- import operators
+		- before r:{\.\s*[a-z][_a-zA-Z$][_a-zA-Z$\d]*} goto reserved_escape
+		- import separators
+		- import brackets
+		- import string
+		- import selector
+		- import number
+		- when r:{[_a-zA-Z$][_a-zA-Z$\d]*} tag "word"
+		- import whitespace
+
+	[number]
+		- when r:{\d+} tag "digits" highlight "number"
+
+	[whitespace]
+		- when r:{\s+} tag "ws"
+
+	[reserved_escape]
+		- when "." tag "l_dot"
+		- import whitespace
+		- when r:{[_a-zA-Z$][_a-zA-Z$\d]*} tag "word" pop
+
+	[comment_multline] span {
+		[start]
+			- when r:{--- note:\s*} tag "comment_open" highlight "comment"
+
+		[span]
+			- when r:{.+(?=---)} tag "comment" highlight "comment"
+			- when r:{(?!---).+} tag "comment" highlight "comment"
+			- when r:{\n+} tag "comment" highlight "comment"
+
+
+		[stop]
+			- when r:{---} tag "comment_close" highlight "comment"
+	}
+
+	[comment_inline] span {
+
+		[start]
+			- when r:{- +note: +} tag "comment_marker" highlight "comment"
+
+		[span]
+			- when r:{[^\n]+} tag "comment" highlight "comment" pop
+	}
+
+	[selector] span {
+
+		[start]
+			- when "$(" tag "selector_open" highlight "keyword" 
+
+		[span]
+			unmatched: tag "T_SELECTOR";
+			- import selector_body
+            - import selector_string
+
+		[stop]
+			- when ")" tag "selector_close" highlight "keyword"
+	}
+
+    [selector_body] span {
+        
+		[start]
+			- when "(" tag "T_SELECTOR" 
+
+		[span]
+			unmatched: tag "T_SELECTOR";
+			- when "(" tag "T_SELECTOR"  goto selector_body
+            - import selector_string
+
+		[stop]
+			- when ")" tag "T_SELECTOR" 
+    }
+    
+	[selector_string] span {
+
+		[start]
+		- when "\"" tag "T_SELECTOR" highlight "string"
+
+		[span]
+            - when r:{\\[\\\/bnrft]} tag "T_SELECTOR" highlight "constant"
+            - when r:{\\"} tag "T_SELECTOR"
+            - when r:{\\u[A-Fa-f\d]{4}} tag "T_SELECTOR" highlight "constant"
+            - when r:{\\.} tag "T_SELECTOR"
+            - when r:{[^"\\]+} tag "T_SELECTOR" highlight "string"
+
+		[stop]
+		- when "\"" tag "T_SELECTOR" highlight "string"
+	}
+
+	[operators]
+		- when "!=" tag "l_neq" highlight "keyword"
+		- when "==" tag "l_eqeq" highlight "keyword"
+		- when ">=" tag "l_gteq" highlight "keyword"
+		- when "<=" tag "l_lteq" highlight "keyword"
+		- when "..." tag "l_spread" highlight "keyword"
+		- when ".." tag "l_concat" highlight "keyword"
+		- when "=" tag "l_eq"
+		- when ">" tag "l_gt" highlight "keyword"
+		- when "<" tag "l_lt" highlight "keyword"
+		- when "+" tag "l_add" highlight "keyword"
+		- when "-" tag "l_sub" highlight "keyword"
+		- when "/" tag "l_div" highlight "keyword"
+		- when "%" tag "l_mod" highlight "keyword"
+		- when "*" tag "l_mul" highlight "keyword"
+		- when "^" tag "l_exp" highlight "keyword"
+		- when "!" tag "l_exc" highlight "keyword"
+		- when ":" tag "l_col" highlight "keyword"
+
+	[separators]
+		- when "'s" tag "l_possessive" highlight "keyword"
+		- when "." tag "l_dot"
+		- when "," tag "l_comma" highlight "delimiter"
+
+	[brackets]
+		- when "(" tag "l_lparen" highlight "delimiter" inset
+		- when ")" tag "l_rparen" highlight "delimiter" pop
+		- when "{" tag "l_lcurly" highlight "delimiter" inset
+		- when "}" tag "l_rcurly" highlight "delimiter" pop
+		- when "[" tag "l_lbrack" highlight "delimiter" inset
+		- when "]" tag "l_rbrack" highlight "delimiter" pop
+
+	[reserved]
+		- when r:{import(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{test(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{suite(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{define(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{browser(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{behavior(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{javascript(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto js_definition
+		- when r:{js(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto js_definition
+		- when r:{function(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{run(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{must(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{mustn'?t(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{try(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{load(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{globally(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{now(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{return(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{if(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{else(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{while(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{until(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{for(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{in(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{range(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{to(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{stop(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{app(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{skip(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{before(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{after(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{next(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{every(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{tab(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{popup(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{dialog(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{download(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{network(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{navigation(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{within(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{new(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{from(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{session(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{incognito(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{timer(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{verify(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{can'?t(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{can(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{by(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{wait(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{navigate(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{back(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{forward(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{reload(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{click(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{type(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{hover(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{drag(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{scroll(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{find(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{close(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{resize(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{upload(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{clear(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{press(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{focus(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{blur(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{unfocus(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{restart(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{double(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{middle(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{top(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{bottom(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{left(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{right(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{log(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{delete(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{dev(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{and(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{or(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{not(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{isn'?t(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{is(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{hasn'?t(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{has(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{any(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{all(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{between(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{true(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{false(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+		- when r:{null(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword"
+
+		- before r:{\d+(?:\.\d+)?\s*milliseconds(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+		- before r:{\d+(?:\.\d+)?\s*millisecond(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+		- before r:{\d+(?:\.\d+)?\s*seconds(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+		- before r:{\d+(?:\.\d+)?\s*second(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+		- before r:{\d+(?:\.\d+)?\s*minutes(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+		- before r:{\d+(?:\.\d+)?\s*minute(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+		- before r:{\d+(?:\.\d+)?\s*hours(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+		- before r:{\d+(?:\.\d+)?\s*hour(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+		- before r:{\d+(?:\.\d+)?\s*min(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+		- before r:{\d+(?:\.\d+)?\s*hr(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+		- before r:{\d+(?:\.\d+)?\s*ms(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+		- before r:{\d+(?:\.\d+)?\s*s(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+		- before r:{\d+(?:\.\d+)?\s*m(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+		- before r:{\d+(?:\.\d+)?\s*h(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+		- before r:{\d+(?:\.\d+)?\s*px(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" goto dimension
+
+
+	[dimension]
+		- import number
+		- import whitespace
+		- when "." tag "l_dot"
+		- when r:{milliseconds(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+		- when r:{millisecond(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+		- when r:{seconds(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+		- when r:{second(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+		- when r:{minutes(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+		- when r:{minute(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+		- when r:{hours(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+		- when r:{hour(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+		- when r:{min(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+		- when r:{hr(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+		- when r:{ms(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+		- when r:{s(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+		- when r:{m(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+		- when r:{h(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+		- when r:{px(?![_a-zA-Z$\d])} tag "keyword" highlight "keyword" pop
+
+	[string] span {
+
+		[start]
+		- when "\"" tag "dquote" highlight "string"
+
+		[span]
+            - when r:{\\[\\\/bnrft]} tag "escaped" highlight "constant"
+            - when r:{\\"} tag "quoteEscape"
+            - when r:{\\u[A-Fa-f\d]{4}} tag "escaped" highlight "constant"
+            - when r:{\\.} tag "badEscape"
+            - when r:{[^"\\]+} tag "string" highlight "string"
+
+		[stop]
+		- when "\"" tag "dquote" highlight "string"
+	}
+
+	[js_definition]
+		- when "(" tag "l_lparen" highlight "delimiter"
+		- when ")" tag "l_rparen" highlight "delimiter"
+		- when "," tag "l_comma" highlight "delimiter"
+		- when "." tag "l_dot"
+		- when r:{\s+} tag "ws"
+		- when r:{[_a-zA-Z$][_a-zA-Z$\d]*} tag "word"
+		- when "{" highlight "annotation" set js_body
+
+
+	[js_body]
+		default: tag "T_JSBODY";
+		unmatched: tag "T_JSBODY";
+		- when r:{"(?:\\.|[^"\\\r\n])*"}
+		- when r:{'(?:\\.|[^'\\\r\n])*'}
+		- when r:{`(?:\\.|[^`\\])*`}
+		- when r:{/(?:\\.|[^/\\\r\n])+/[gmiyu]*}
+		- when r:{//[^\n]*}
+		- when r:{/\*[\s\S]*?\*/}
+		- when "{" highlight "annotation" goto js_body
+		- when "}" highlight "annotation" pop
+		- when "(" highlight "annotation" goto js_body
+		- when ")" highlight "annotation" pop
+		- when "[" highlight "annotation" goto js_body
+		- when "]" highlight "annotation" pop
+
+}

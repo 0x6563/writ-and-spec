@@ -1,0 +1,43 @@
+{
+  "name": "writ-and-spec",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/0x6563/writ-and-spec#readme",
+  "bugs": {
+    "url": "https://github.com/0x6563/writ-and-spec/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0x6563/writ-and-spec.git"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "author": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.ts",
+    "test": "node --test \"src/tests/parsing/*.spec.ts\"",
+    "sandbox": "node src/tests/sandbox/server.ts",
+    "script:compile-grammar": "node scripts/compile-grammar.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint --flag unstable_native_nodejs_ts_config .",
+    "lint:fix": "eslint --flag unstable_native_nodejs_ts_config . --fix",
+    "build:studio": "tsc -p tsconfig.build.json",
+    "prepackage-project": "npm run build:studio",
+    "package-project": "node scripts/package-project.mjs"
+  },
+  "dependencies": {
+    "grammar-well": "^2.3.1",
+    "playwright": "^1.62.0"
+  },
+  "devDependencies": {
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "@types/chai": "^5.0.1",
+    "@types/node": "^24.0.0",
+    "@typescript-eslint/parser": "^8.71.1",
+    "chai": "^6.2.2",
+    "eslint": "^10.12.0",
+    "typescript": "6.x.x"
+  }
+}

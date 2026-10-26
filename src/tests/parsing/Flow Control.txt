@@ -1,0 +1,5 @@
+stop
+skip
+stop suite
+stop app
+stop event

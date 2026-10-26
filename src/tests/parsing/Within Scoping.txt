@@ -1,0 +1,9 @@
+within $(.modal) {
+    click $(.close)
+}
+
+within $(.sidebar) click $(.link)
+
+within every items {
+    click $(.expand)
+}

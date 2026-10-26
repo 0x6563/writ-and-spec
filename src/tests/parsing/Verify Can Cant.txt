@@ -1,0 +1,11 @@
+if verify $(.dashboard) is visible
+    log "passed"
+
+if can verify $(.dashboard) is visible
+    log "passed"
+
+if cant verify $(.dashboard) is visible
+    log "failed"
+
+if can't verify $(.dashboard) is visible
+    log "failed"

@@ -1,0 +1,5 @@
+navigate to "https://example.com"
+navigate to vars.baseUrl in reportTab
+navigate back
+navigate forward
+navigate reload

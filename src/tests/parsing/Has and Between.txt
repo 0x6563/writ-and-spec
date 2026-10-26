@@ -1,0 +1,4 @@
+a = $(.error) has text "Invalid"
+b = $(.error) hasnt text "Invalid"
+c = $(.error) hasn't text "Invalid"
+d = 5 between 1 to 10

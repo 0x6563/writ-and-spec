@@ -1,0 +1,5 @@
+must verify $(.dashboard) is visible
+mustn't verify $(.error) is visible
+mustnt verify $(.error) is visible
+must click $(.submit)
+must run login()

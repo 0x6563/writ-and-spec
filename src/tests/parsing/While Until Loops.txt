@@ -1,0 +1,5 @@
+while $(.spinner) is visible
+    click $(.retry)
+
+until $(.result) is visible
+    click $(.retry)

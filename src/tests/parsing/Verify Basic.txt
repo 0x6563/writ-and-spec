@@ -1,0 +1,2 @@
+verify $(.dashboard) is visible
+verify "labeled check" by $(.dashboard) is visible

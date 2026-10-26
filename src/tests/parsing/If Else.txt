@@ -1,0 +1,8 @@
+if $(.banner) is visible
+    click $(.dismiss)
+
+if $(.modal) is visible {
+    click $(.close)
+} else {
+    log "no modal"
+}

@@ -1,0 +1,11 @@
+define function login(email, password) {
+    click $(.submit)
+}
+
+define js handleResponse(page) {
+    return 1
+}
+
+define browser js customCheck() {
+    return 1
+}

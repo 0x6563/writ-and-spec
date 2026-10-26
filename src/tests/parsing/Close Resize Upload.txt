@@ -1,0 +1,4 @@
+close tab
+close popup
+resize tab to 1280px 720px
+upload vars.filePath to $(.file-input)

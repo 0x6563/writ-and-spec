@@ -1,0 +1,5 @@
+reportTab = tab from click $(.open-report)
+tab3 = next tab opened
+myTab = new tab
+guest = new session
+a = new timer

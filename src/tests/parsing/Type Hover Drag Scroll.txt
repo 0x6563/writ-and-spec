@@ -1,0 +1,9 @@
+type "value" in $(.field)
+type "value" slowly in $(.field)
+hover $(.menu)
+hover $(.menu) smoothly
+drag $(.card) to $(.target)
+drag $(.card) smoothly to $(.target)
+scroll to $(.footer)
+scroll slowly to $(.footer)
+scroll to bottom

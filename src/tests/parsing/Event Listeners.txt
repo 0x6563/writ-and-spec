@@ -1,0 +1,6 @@
+after popup opened close popup
+before tab closed run cleanup()
+after next popup opened click $(.accept)
+now after dialog opened {
+    click $(.ok)
+}

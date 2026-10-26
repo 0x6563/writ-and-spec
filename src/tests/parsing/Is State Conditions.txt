@@ -1,0 +1,4 @@
+a = $(.btn) is visible
+b = $(.btn) isnt disabled
+c = $(.btn) isn't disabled
+d = $(.user) is admin

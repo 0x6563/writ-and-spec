@@ -1,0 +1,5 @@
+x = 1
+vars.user.name = "test"
+items[0] = "x"
+y = item.text
+z = item's text

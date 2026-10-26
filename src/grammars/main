@@ -1,0 +1,690 @@
+import * from "lexer";
+
+grammar {
+    [Start]
+    | _ Imports __ Statements _ => { type: "script", imports: $1, block: { type: "block", data: $3 } }
+    | _ Statements _ => { type: "script", block: { type: "block", data: $1 } }
+
+    [Imports]
+    | Import => [$0]
+    | Imports __ Import => [...$0, $2]
+
+    [Import]
+    | "import" __ String => { type: "import", value: $2 }
+
+    [Statements]
+    | Statement
+    => ($0.hoisted ? { statements: [], hoisted: [$0] } : { statements: [$0], hoisted: [] })
+
+    | Statements __ Statement
+    => ($2.hoisted
+        ? { statements: $0.statements, hoisted: [...$0.hoisted, $2] }
+        : { statements: [...$0.statements, $2], hoisted: $0.hoisted })
+
+    [Statement] => ($0)
+
+    | TestSuite
+    | Define
+    | Assignment
+    | If
+    | Action
+    | FlowControl
+    | Loop
+    | EventListener
+    | UnhoistedEventListener
+    | Comment
+
+    | "try" _ Block
+    => { type: "statement", kind: "try", data: { block: $2 } }
+
+    | StatementRun
+    | Verify
+
+    | Must __ Verify
+    => { type: "statement", kind: $0, data: { statement: $2 } }
+
+	| Must __ StatementRun
+    => { type: "statement", kind: $0, data: { statement: $2 } }
+
+	| Must __ Action
+    => { type: "statement", kind: $0, data: { statement: $2 } }
+
+    | "wait" __ DurationList
+    => { type: "statement", kind: "wait", data: { duration: $2 } }
+
+    | "wait" __ "until" __ Expression
+    => { type: "statement", kind: "wait-until", data: { condition: $4 } }
+
+    | "wait" __ "until" __ "next" __ EventListenerTarget
+    => { type: "statement", kind: "wait-until-next", data: { event: $6 } }
+
+    | "within" __ Expression RunBlock
+    => { type: "statement", kind: "within", data: { context: $2, block: $3 } }
+
+    | "within" __ "every" __ Expression RunBlock
+    => { type: "statement", kind: "within-every", data: { context: $4, block: $5 } }
+
+    | "log" __ Expression
+    => { type: "statement", kind: "log", data: { expression: $2 } }
+
+    | "delete" __ Expression
+    => { type: "statement", kind: "delete", data: { expression: $2 } }
+
+    | "dev" __ FunctionCall
+    => { type: "statement", kind: "dev", data: { call: $2 } }
+
+    [Comment]
+        | <comment_open> (<comment> _)+  <comment_close>
+        => { type: "comment", kind: "block", data: { comment: $1.map(t => t[0].value).join('') } }
+
+        | <comment_marker> <comment>
+        => { type: "comment", kind: "inline", data: { comment: $1.value } }
+
+    [Block]
+    | "{" _ Statements _ "}"
+    => ({ type: "block", data: $2 })
+
+    | "{" _ "}"
+    => ({ type: "block", data: { statements: [], hoisted: [] } })
+
+    [RunBlock]
+    | _ Block
+    => ($1)
+
+    | __ Statement
+    => ({ type: "block", data: $1.hoisted ? { statements: [], hoisted: [$1] } : { statements: [$1], hoisted: [] } })
+
+    [TestSuite]
+    | "test" __ "suite" __ String _ Block
+    => { type: "test-suite", data: { name: $4, block: $6 } }
+
+    [Define]
+    | "define" __ ("browser" __)? ("behavior" __)? _ Function
+    => { ...$5, data: { ...$5.data, browser: !!$2, behavior: !!$3 } }
+
+    | "define" __ "behavior" __ Word _ "=" _ Object
+    => { type: "define", kind: "behavior", hoisted: true, data: { name: $4, value: $8 } }
+
+    [Function]
+    => { type: "define", kind: "function", hoisted: true, data: { name: $2, args: $3, source: $5 } }
+    | "function" __ FunctionName FunctionArgs _ Block
+    => { type: "define", kind: "function", hoisted: true, data: { name: $2, args: $3, block: $5 } }
+
+    | "js" __ FunctionName FunctionArgs _ JsBlock
+    | "javascript"  __ FunctionName FunctionArgs _ JsBlock
+
+	[FunctionArgs]
+	|	"(" _ WordList _ ")"
+    => ($2)
+
+	|	"(" _ ")"
+    => ([])
+
+    [Assignment]
+    | Accessor@target _ "=" _ Assignable@value
+    => { type: "statement", kind: "assignment", data: { target: $target, value: $value } }
+
+    [Assignable]
+    => ($0)
+    | Expression
+    | Capture
+    | EventListener
+    | StatementRun
+    | StatementLoad
+    | ActionFind
+
+    | "next" __ EventListenerTarget
+    => { type: "event-listener", kind: "next", data: { event: $2 } }
+
+    [ActionFind]
+    | "find" (__ "every")? __ Expression
+    => { type: "action", kind: "find", data: { every: !!$1, target: $3 } }
+
+    | "find" (__ "every")? __ Expression _ InChain
+    => { type: "statement-expression", kind: "dom-subject", data: { subjects: $5, block: { type: "block", data: { statements: [{ type: "action", kind: "find", data: { every: !!$1, target: $3 } }], hoisted: [] } } } }
+
+    [Capture]
+    => { type: "statement-expression", kind: "browser-event-capture", data: { type: $0.value, block: { type: "block", data: { statements: [$4], hoisted: [] } } } }
+    | "tab" __ "from" __ Action
+    | "popup" __ "from" __ Action
+    | "download" __ "from" __ Action
+
+    [NewRef]
+    | "new" __ ("tab" | "session" | "incognito" | "timer")
+    => { type: "expression", kind: "new", data: { inputs: [], construct: $2[0].value } }
+
+    [Loop]
+    | "while" __ Expression RunBlock
+    => { type: "flow", kind: "while", data: { condition: $2, block: $3 } }
+
+    | "until" __ Expression RunBlock
+    => { type: "flow", kind: "until", data: { condition: $2, block: $3 } }
+
+    | "for" __ Word __ "in" __ Expression RunBlock
+    => { type: "flow", kind: "for", data: { key: null, value: $2, iterable: $6, block: $7 } }
+
+    | "for" __ Word "," _ Word __ "in" __ Expression RunBlock
+    => { type: "flow", kind: "for", data: { key: $2, value: $5, iterable: $9, block: $10 } }
+
+    | "for" __ Word __ "in" __ Range RunBlock
+    => { type: "flow", kind: "for", data: { key: null, value: $2, iterable: $6, block: $7 } }
+
+    [Range]
+    | "range" __ Expression __ "to" __ Expression
+    => { type: "expression", kind: "range", data: { inputs: [$2, $6] } }
+
+    | "range" __ Expression "," _ Step __ "to" __ Expression
+    => { type: "expression", kind: "range", data: { inputs: [$2, $9, $5] } }
+
+    [Step]
+    | "+" Expression@operand
+    => { type: "expression", kind: "step", data: { inputs: [$operand], direction: "+" } }
+
+    | "-" Expression@operand
+    => { type: "expression", kind: "step", data: { inputs: [$operand], direction: "-" } }
+
+    [If]
+    | "if" __ Condition RunBlock
+    => { type: "flow", kind: "if", data: { condition: $2, block: $3 } }
+
+    | "if" __ Condition RunBlock _ "else" RunBlock
+    => { type: "flow", kind: "if", data: { condition: $2, block: $3, else: $6 } }
+
+    [FlowControl]
+    => { type: "statement", kind: $0.value, data: { target: $2?.value } }
+    | "stop" __ "suite"
+    | "stop" __ "app"
+    | "stop" __ "event"
+    | "stop"
+    | "skip"
+
+    [StatementRun]
+    | "run" _ Runnable
+    => { type: "statement", kind: "run", data: { runnable: $2 } }
+
+    [StatementLoad]
+    | "load" _ Runnable
+    => { type: "statement", kind: "load", data: { runnable: $2 } }
+
+    | "load" __ "globally" _ Runnable
+    => { type: "statement", kind: "load", data: { runnable: $4, global: true } }
+
+    [Runnable]
+    | FunctionCall
+    => ($0)
+
+    | "in" __ "browser" __ "js" _ JsBlock
+    => { type: "block", data: { environment: $2.value, source: $6 } }
+
+    | "in" __ Word __ "js" _ JsBlock
+    => { type: "block", data: { environment: $2, source: $6 } }
+
+    | Block
+    => ($0)
+
+    [UnhoistedEventListener]
+    | "now" __ EventListener@listener
+    => { ...$2, hoisted: false }
+
+    [EventListener]
+    => { type: "event-listener", kind: $0.value, hoisted: true, data: { event: $3, block: $4, timing: $1?.[1] ?? "every" }}
+    | "before" ( __ ListenerQualifier )? __ EventListenerTarget RunBlock
+    | "after" ( __ ListenerQualifier )? __ EventListenerTarget RunBlock
+
+    [EventListenerTarget]
+    | Channel __ Word
+    => { type: "event", data: { channel: $0, event: $2 } }
+
+    | Expression
+    => ($0)
+
+    [ListenerQualifier]
+    => ($0.value)
+    | "next"
+    | "every"
+
+    [Channel]
+    => ($0.value)
+    | "tab"
+    | "popup"
+    | "dialog"
+    | "download"
+    | "network"
+    | "navigation"
+
+    [Verify]
+    | "verify" __ String _ "by" __ Expression
+    => { type: "verify", kind: "can", data: { inputs: [$6], alias: $2 }}
+
+    | "verify" __ Expression
+    => { type: "verify", kind: "can", data: { inputs: [$2] }}
+
+    [Action]
+    => ($0)
+    | BareAction
+    | ActionFind
+
+    | BareAction@action _ InChain
+    => { type: "statement-expression", kind: "dom-subject", data: { subjects: $2, block: { type: "block", data: { statements: [$action], hoisted: [] } } } }
+
+    [BareAction]
+    => ($0)
+    | ActionSimple
+    | ActionNavigate
+    | ActionClick
+    | ActionType
+    | ActionHover
+    | ActionDrag
+    | ActionScroll
+    | ActionClose
+    | ActionResize
+    | ActionUpload
+
+    [ActionSimple]
+    => { type: "action", kind: $0.value, data: { target: $target } }
+    | "clear" __ Expression@target
+    | "press" __ Expression@target
+    | "focus" __ Expression@target
+    | "blur" __ Expression@target
+    | "unfocus" __ Expression@target
+    | "restart" __ Expression@target
+
+    [ActionNavigate]
+    | "navigate" __ "to" __ Expression@destination
+    => { type: "action", kind: $0.value, data: { destination: $destination } }
+
+    | "navigate" __ NavigationDirection@direction
+    => { type: "action", kind: $0.value, data: { direction: $direction } }
+
+    [ActionClick]
+    | (ClickType __)? "click" __ Expression@target (__ Word)?
+    => { type: "action", kind: "click", data: { button: $0?.[0] || "right", behavior: $4?.[1], target: $target } }
+
+    [ActionType]
+    | "type" __ Expression@content (__ Word)? __ "in" __ Expression@target
+    => { type: "action", kind: $0.value, data: { behavior: $3?.[1], target: $target, content: $content } }
+
+    [ActionHover]
+    | "hover" __ Expression@target (__ Word)?
+    => { type: "action", kind: $0.value, data: { behavior: $3?.[1], target: $target } }
+
+    [ActionDrag]
+    | "drag" __ Expression@source (__ Word)? __ "to" __ Expression@destination
+    => { type: "action", kind: $0.value, data: { behavior: $3?.[1], source: $source, destination: $destination } }
+
+    [ActionScroll]
+    | "scroll" __ (Word __)? "to" __ ScrollTarget
+    => { type: "action", kind: $0.value, data: { behavior: $2?.[0], target: $5 } }
+
+    [ActionClose]
+    | "close" __ ("tab" | "popup")
+    => { type: "action", kind: $0.value, data: { target: $2[0].value } }
+
+    [ActionResize]
+    | "resize" __ "tab" __ "to" __ Expression@width __ Expression@height
+    => { type: "action", kind: $0.value, data: { width: $width, height: $height } }
+
+    [ActionUpload]
+    | "upload" __ Expression@file __ "to" __ Expression@target
+    => { type: "action", kind: $0.value, data: { file: $file, target: $target } }
+
+    [NavigationDirection]
+    => ($0.value)
+    | "back"
+    | "forward"
+    | "reload"
+
+    [ScrollTarget]
+    => ($0.value)
+    | Expression
+    => ($0)
+    | "top"
+    | "bottom"
+    | "left"
+    | "right"
+
+    [ClickType]
+    => ($0.value)
+    | "left"
+    | "right"
+    | "middle"
+    | "double"
+
+    [InChain]
+    | "in" __ Expression
+    => ([$2])
+    | InChain@chain __ "in" __ Expression
+    => ([...$chain, $4])
+
+    [JsBlock]
+    => { type: "source", kind: "javascript", data: { source: $1.map(v => v.value).join('') } }
+    | "{" <T_JSBODY>+ "}"
+
+    [CSS_Selector]
+    => { type: "literal", kind: "css-selector", data: { value: $1.map(v => v.value).join('') } }
+    | "$(" <T_SELECTOR>+ ")"
+
+    [Expression]
+    => ($0)
+    | NewRef
+    | Exp
+
+    [Condition]
+    => ($0)
+    | Expression
+    | Verify 
+    
+    | Can __ Verify
+    => ({ ...$2, kind: $0 })
+
+    [FunctionName]
+    | Word
+    => { name: $0 }
+    | Word "." Word
+    => { name: $0, namespace: $2 }
+
+    [Dimension]
+    | Number@value _ DimensionUnit@unit
+    => { type: "expression", kind: "dimension", data: { inputs: [], value: $value, unit: $unit } }
+
+    [DurationList]
+    | DurationList@list _ Duration@duration
+    => { type: "expression", kind: "duration-list", data: { inputs: [...$list.data.inputs, $duration] } }
+    | Duration@duration
+    => { type: "expression", kind: "duration-list", data: { inputs: [$duration] } }
+
+    [Duration]
+    | Number@value _ TimeUnit@unit
+    => { type: "expression", kind: "duration", data: { inputs: [], value: $value, unit: $unit } }
+
+    [TimeUnit]
+    => ($0.value)
+    | "ms"
+    | "millisecond"
+    | "milliseconds"
+    | "s"
+    | "second"
+    | "seconds"
+    | "m"
+    | "min"
+    | "minute"
+    | "minutes"
+    | "h"
+    | "hr"
+    | "hour"
+    | "hours"
+    
+    [DimensionUnit]
+    => ($0.value)
+    | "px"
+
+    [WordList]
+        | Word 
+        => [$0]
+        
+        | WordList _ "," _ Word 
+        =>[...$0, $4]
+ 
+	[Exp] Exp_L1 =>($0)
+	[Exp_L1] Exp_L2 =>($0)
+	[Exp_L2] Exp_L3 =>($0)
+	[Exp_L3] Exp_L4 =>($0)
+	[Exp_L4] Exp_L5 =>($0)
+	[Exp_L5] Exp_L6 =>($0)
+	[Exp_L6] Exp_L7 =>($0)
+	[Exp_L7] Exp_L8 =>($0)
+	[Exp_L8] Exp_L9 =>($0)
+
+	[Exp_L1]
+        => { type: "expression", kind: $2.value, data: { inputs: [$left, $right] } }
+		| Exp_L1@left _ "or" _ Exp_L2@right
+
+	[Exp_L2]
+        => { type: "expression", kind: $2.value, data: { inputs: [$left, $right] } }
+		| Exp_L2@left _ "and" _ Exp_L3@right
+
+	[Exp_L3]
+        => { type: "expression", kind: $2.value, data: { inputs: [$left, $right] } }
+		| Exp_L3@left _ "<" _ Exp_L4@right
+		| Exp_L3@left _ ">" _ Exp_L4@right
+		| Exp_L3@left _ "<=" _ Exp_L4@right
+		| Exp_L3@left _ ">=" _ Exp_L4@right
+		| Exp_L3@left _ "!=" _ Exp_L4@right
+		| Exp_L3@left _ "==" _ Exp_L4@right
+		| Exp_L3@left _ "is" __ Word@name
+        => { type: "expression", kind: $2.value, data: { inputs: [$left], function: $name } }
+		| Exp_L3@left _ "isnt" __ Word@name
+        => { type: "expression", kind: "isnt", data: { inputs: [$left], function: $name } }
+		| Exp_L3@left _ "isn't" __ Word@name
+        => { type: "expression", kind: "isnt", data: { inputs: [$left], function: $name } }
+
+
+		| Exp_L3@left _ "has" __ Word@property __ Exp_L4@value
+        => { type: "expression", kind: $2.value, data: { inputs: [$left, $value], function: $property } }
+		| Exp_L3@left _ "hasnt" __ Word@property __ Exp_L4@value
+        => { type: "expression", kind: "hasnt", data: { inputs: [$left, $value], function: $property } }
+		| Exp_L3@left _ "hasn't" __ Word@property __ Exp_L4@value
+        => { type: "expression", kind: "hasnt", data: { inputs: [$left, $value], function: $property } }
+
+		| Exp_L3@left _ "between" _ Exp@from _ "to" _ Exp@to
+        => { type: "expression", kind: $2.value, data: { inputs: [$left, $from, $to] } }
+
+	[Exp_L4]
+        => { type: "expression", kind: $2.value, data: { inputs: [$left, $right] } }
+		| Exp_L4@left _ ".." _ Exp_L5@right
+
+	[Exp_L5]
+        => { type: "expression", kind: $2.value, data: { inputs: [$left, $right] } }
+		| Exp_L5@left _ "+" _ Exp_L6@right
+		| Exp_L5@left _ "-" _ Exp_L6@right
+
+	[Exp_L6]
+        => { type: "expression", kind: $2.value, data: { inputs: [$left, $right] } }
+		| Exp_L6@left _ "*" _ Exp_L7@right
+		| Exp_L6@left _ "/" _ Exp_L7@right
+		| Exp_L6@left _ "%" _ Exp_L7@right
+
+	[Exp_L7]
+        => { type: "expression", kind:"!", data: { inputs: [$operand] } }
+		| "!" _ Exp_L8@operand
+		| "not" _ Exp_L8@operand
+
+	[Exp_L8]
+		| Exp_L8@left _ "^" _ Exp_L9@right
+        => { type: "expression", kind: $2.value, data: { inputs: [$left, $right] } }
+
+	[Exp_L9]
+        =>($0)
+		| Number@value => ({ type: "literal", kind: "number", data: { value: $value } })
+		| NegativeNumber@value => ({ type: "literal", kind: "number", data: { value: $value } })
+		| String@value => ({ type: "literal", kind: "string", data: { value: $value } })
+		| Constant@value => ($value === null ? { type: "literal", kind: "null", data: { value: null } } : { type: "literal", kind: "boolean", data: { value: $value } })
+		| CSS_Selector
+		| Accessor
+		| Group
+		| FunctionCall
+		| Array
+		| LogicalConnector
+		| DurationList
+		| Dimension
+		| Object
+
+	[Constant]
+		| "null"
+        => (null)
+
+		| "false"
+        => (false)
+
+		| "true"
+        => (true)
+
+	[Accessor]
+        => { type: "expression", kind: "accessor", data: { inputs: [], root: $0, path: $1 } }
+
+        | Group Path_Segment_List
+		| CSS_Selector Path_Segment_List
+		| FunctionCall Path_Segment_List
+
+		| Word@name Path_Segment_List@segments
+        => { type: "expression", kind: "accessor", data: { inputs: [], root: { type: "expression", kind: "reference", data: { inputs: [], name: $name } }, path: $segments } }
+
+		| Word@name
+        => { type: "expression", kind: "reference", data: { inputs: [], name: $name } }
+
+	[Path_Segment_List]
+		| Path_Segment
+        => [$0]
+
+        | Path_Segment_List _ Path_Segment
+        => [...$0, $2]
+
+    [Path_Segment]
+        | "[" _ Exp@property _ "]"
+        => ($property)
+
+		| "."  _ Word@property
+        => { type: "literal", kind: "string", data: { value: $property } }
+
+		| "'s" __ Word@property
+        => { type: "literal", kind: "string", data: { value: $property } }
+
+	[Word]
+		| <word> 
+		=> ($0.value)
+
+	[Group]
+		| "(" _ Exp@expression _ ")"
+		=> { type: "expression", kind: "group", data: { inputs: [$expression] } }
+
+	[Number]
+		| <digits> "." <digits> 
+		=> (parseFloat(`${$0.value}.${$2.value}`))
+
+		| <digits> 
+		=> (parseInt(`${$0.value}`))
+
+
+	[NegativeNumber]
+		| "-" _ Number 
+		=> ($2 * -1)
+
+	[String]
+		| <dquote> StringInner <dquote>
+		=> ($1)
+		
+		| <dquote> <dquote> 
+		=> ("")
+
+	[StringInner]
+		| StringInner StringEscape 
+        => ($0 + $1)
+		
+        | StringInner <string> 
+        => ($0 + $1.value)
+		
+        | StringEscape 
+        =>($0)
+		
+        | <string> 
+        => ($0.value)
+
+	[StringEscape]
+		| <escaped> 
+		=> (JSON.parse(`"${$0.value}"`))
+
+		| <quoteEscape> 
+		=> ('"')
+
+	[Array]
+
+		| "[" _ "]"
+		=> { type: "expression", kind: "array", data: { inputs: [] } }
+
+		| "[" _ Exps _ "]"
+		=> { type: "expression", kind: "array", data: { inputs: $2 } }
+
+	[Object]
+
+		| "{" _ "}"
+		=> { type: "expression", kind: "object", data: { inputs: [], properties: [] } }
+
+		| "{" _ Props _ "}"
+		=> { type: "expression", kind: "object", data: { inputs: [], properties: $2 } }
+
+
+    [Props]
+		=> ($0)
+        | PropList
+        | PropList _ ","
+
+	[PropList]
+		| Prop 
+		=> [$0]
+
+		| PropList _ "," _ Prop 
+		=> [...$0, $4]
+
+	[Prop]
+		| PropName@key _ ":" _ Exp@value
+		=> { type: "property", kind: "value", data: { key: $key, value: $value} }
+
+		| "..." _ Exp@value 
+		=> { type: "property", kind: "spread", data:  $value }
+
+		| Word@name
+		=> { type: "property", kind: "value", data: { key: $0, value: { type: "expression", kind: "reference", data: { inputs: [], name: $0 } } } }
+
+
+	[PropName]
+		=> ($0) 
+		| String
+		| Word
+
+	[FunctionCall]
+		| FunctionCallee@callee _ "(" _ Exps@args _  ")"
+		=> { type: "expression", kind: "call", data: { inputs: [$callee, ...$args] } }
+
+		| FunctionCallee@callee _ "(" _ ")"
+		=> { type: "expression", kind: "call", data: { inputs: [$callee] } }
+
+	[FunctionCallee]
+		=> { type: "expression", kind: "reference", data: { inputs: [], name: $0 } }
+		| Word
+		| Group
+		=> ($0)
+
+	[LogicalConnector]
+		| ("any"| "all") _ "{" _ Exps@expressions _ "}"
+		=> { type: "expression", kind: $0[0].value, data: { inputs: [], conditions: $expressions } }
+
+    [Exps] 
+		=> ($0)
+        | ExpList
+        | ExpList _ ","
+
+	[ExpList]
+		
+		| Exp
+		=> [$0]
+		
+		| ExpList _ "," _ Exp  
+		=> [...$0, $4]
+
+    [Can]
+        | "can" => ("can")
+        | "cant" => ("cant")
+        | "can't" => ("cant")
+
+    [Must]
+        | "must" => ("must")
+        | "mustnt" => ("mustnt")
+        | "mustn't" => ("mustnt")
+
+	[_]
+		| <ws>? => (null)
+
+	[__]
+		| <ws> => (null)
+
+}

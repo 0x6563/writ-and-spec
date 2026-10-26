@@ -1,0 +1,4 @@
+a = 400ms
+b = 1h 30m
+c = 10px
+d = vars.baseTimeout + 30s

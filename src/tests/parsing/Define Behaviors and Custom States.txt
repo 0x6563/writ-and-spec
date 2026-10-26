@@ -1,0 +1,13 @@
+define behavior slowly = {
+    action: {
+        interval: { target: 200ms }
+    }
+}
+
+define browser js is.admin() {
+    return true
+}
+
+define browser js has.permission(level) {
+    return true
+}

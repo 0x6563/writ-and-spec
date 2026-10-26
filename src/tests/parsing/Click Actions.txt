@@ -1,0 +1,4 @@
+click $(.btn)
+left click $(.btn)
+double click $(.btn) slowly
+click $(.btn) in $(.modal)

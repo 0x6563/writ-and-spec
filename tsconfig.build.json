@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rewriteRelativeImportExtensions": true,
+    "outDir": ".package-tmp",
+    "rootDir": "src"
+  },
+  "include": ["src/tests/parsing/*.spec.ts", "src/tests/util/ast-builder.ts"]
+}
